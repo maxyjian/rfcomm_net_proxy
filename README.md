@@ -53,5 +53,5 @@ rfcomm_net> connect
 ```
 
 ## TODO
-1、Can tun be used?
-2、Make the transport protocol more reliable.
+1、Can tun be used?  
+2、Make the transport protocol more reliable.  
