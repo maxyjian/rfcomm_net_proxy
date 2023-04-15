@@ -1,14 +1,14 @@
 #include "common.h"
 
-#define SERVER_TAP_IFNAME "bt-net%d"
-#define SERVER_BR_IFNAME "bt-bridge"
-#define SERVER_BR_IP "192.168.10.1"
+#define SERVER_TAP_IFNAME         "bt-net%d"
+#define SERVER_BR_IFNAME          "bt-bridge"
+#define SERVER_BR_IP              "192.168.10.1"
 #define SERVER_SUPPORT_CLIENT_NUM 10
-#define SERVER_BT_CHANNEL 11
-#define SERVER_BT_UUID 0x1101
+#define SERVER_BT_CHANNEL         11
+#define SERVER_BT_UUID            0x1101
 
 typedef struct {
-    int rfcomm_fd;
+    int        rfcomm_fd;
     uv_poll_t* server_poll_handle;
     uv_loop_t* loop;
 } server_service_t;
@@ -18,24 +18,24 @@ static server_service_t g_server_service = {
 
 typedef struct {
     struct list_node node;
-    int index;
-    int tap_fd;
-    int client_fd;
-    uv_poll_t* tap_poll_handle;
-    uv_poll_t* client_poll_handle;
+    int              index;
+    int              tap_fd;
+    int              client_fd;
+    uv_poll_t*       tap_poll_handle;
+    uv_poll_t*       client_poll_handle;
 } client_handle_t;
 
 typedef struct sdp_service {
     sdp_session_t* session;
-    sdp_record_t* rec;
+    sdp_record_t*  rec;
 } sdp_service_t;
 static sdp_service_t g_sdp_service;
 
 struct list_node client_list;
 
-static int rfcomm_server_create(void);
-static int rfcomm_server_close(void);
-static int rfcomm_server_accept_client(void);
+static int  rfcomm_server_create(void);
+static int  rfcomm_server_close(void);
+static int  rfcomm_server_accept_client(void);
 static void rfcomm_server_close_client(struct list_node* handle);
 static void rfcomm_server_cmd_usage(void);
 
@@ -110,11 +110,12 @@ static int rfcomm_server_check_by_index(struct list_node* item, int index)
     return 0;
 }
 
-static int rfcomm_server_bridge_add_iface(const char* if_name, const char* bridge)
+static int rfcomm_server_bridge_add_iface(const char* if_name,
+                                          const char* bridge)
 {
-    int ifindex;
+    int          ifindex;
     struct ifreq ifr;
-    int sk, err = 0;
+    int          sk, err = 0;
 
     if (!if_name || !bridge) {
         ERROR_("iface null\n");
@@ -134,18 +135,19 @@ static int rfcomm_server_bridge_add_iface(const char* if_name, const char* bridg
     if (ioctl(sk, SIOCBRADDIF, &ifr) < 0) {
         err = -errno;
         ERROR_("can't add %s to the bridge %s: %s(%d)\n", if_name, bridge,
-            strerror(-err), -err);
+               strerror(-err), -err);
     }
 
     close(sk);
     return err;
 }
 
-static int rfcomm_server_bridge_del_iface(const char* if_name, const char* bridge)
+static int rfcomm_server_bridge_del_iface(const char* if_name,
+                                          const char* bridge)
 {
-    int ifindex;
+    int          ifindex;
     struct ifreq ifr;
-    int sk, err = 0;
+    int          sk, err = 0;
 
     if (!if_name || !bridge) {
         ERROR_("iface null\n");
@@ -168,7 +170,7 @@ static int rfcomm_server_bridge_del_iface(const char* if_name, const char* bridg
     }
 
     ifindex = if_nametoindex(if_name);
-    sk = socket(AF_INET, SOCK_STREAM, 0);
+    sk      = socket(AF_INET, SOCK_STREAM, 0);
     if (sk < 0) {
         ERROR_("open socket fail\n");
         return -1;
@@ -181,7 +183,7 @@ static int rfcomm_server_bridge_del_iface(const char* if_name, const char* bridg
     if (ioctl(sk, SIOCBRDELIF, &ifr) < 0) {
         err = -errno;
         ERROR_("can't delete %s from the bridge %s: %s(%d)\n", if_name, bridge,
-            strerror(-err), -err);
+               strerror(-err), -err);
     }
 
     close(sk);
@@ -191,7 +193,7 @@ static int rfcomm_server_bridge_del_iface(const char* if_name, const char* bridg
 static int rfcomm_server_bridge_set_forward_delay(int sk)
 {
     unsigned long args[4] = { BRCTL_SET_BRIDGE_FORWARD_DELAY, 0, 0, 0 };
-    struct ifreq ifr;
+    struct ifreq  ifr;
 
     memset(&ifr, 0, sizeof(ifr));
     strncpy(ifr.ifr_name, SERVER_BR_IFNAME, IFNAMSIZ - 1);
@@ -252,9 +254,10 @@ static int rfcomm_server_bridge_remove(void)
     return 0;
 }
 
-static void rfcomm_server_poll_tap_data(uv_poll_t* handle, int status, int events)
+static void rfcomm_server_poll_tap_data(uv_poll_t* handle, int status,
+                                        int events)
 {
-    uint8_t buf[TAP_MAX_PKT_WRITE_LEN];
+    uint8_t          buf[TAP_MAX_PKT_WRITE_LEN];
     client_handle_t* client_handle = (client_handle_t*)(handle->data);
 
     if (events & UV_READABLE) {
@@ -277,14 +280,16 @@ static void rfcomm_server_poll_tap_data(uv_poll_t* handle, int status, int event
     }
 }
 
-static void rfcomm_server_poll_client_data(uv_poll_t* handle, int status, int events)
+static void rfcomm_server_poll_client_data(uv_poll_t* handle, int status,
+                                           int events)
 {
-    uint8_t buf[TAP_MAX_PKT_WRITE_LEN];
+    uint8_t          buf[TAP_MAX_PKT_WRITE_LEN];
     client_handle_t* client_handle = (client_handle_t*)(handle->data);
 
     if (events & UV_READABLE) {
         if (status == 0) {
-            int ret = read(client_handle->client_fd, buf, TAP_MAX_PKT_WRITE_LEN);
+            int ret
+                = read(client_handle->client_fd, buf, TAP_MAX_PKT_WRITE_LEN);
             if (ret > 0) {
                 rfcomm_net_protocol_receive(client_handle->tap_fd, buf, ret);
             }
@@ -302,7 +307,8 @@ static void rfcomm_server_poll_client_data(uv_poll_t* handle, int status, int ev
     }
 }
 
-static void rfcomm_server_poll_server_data(uv_poll_t* handle, int status, int events)
+static void rfcomm_server_poll_server_data(uv_poll_t* handle, int status,
+                                           int events)
 {
     if (events & UV_READABLE) {
         if (status == 0) {
@@ -324,13 +330,13 @@ fail:
 
 static int rfcomm_server_accept_client(void)
 {
-    int i, ret;
+    int                i, ret;
     struct sockaddr_rc rem_addr = { 0 };
-    char buf[64] = { 0 };
-    socklen_t opt = sizeof(rem_addr);
+    char               buf[64]  = { 0 };
+    socklen_t          opt      = sizeof(rem_addr);
 
     bdaddr_t bt_mac;
-    char bt_mac_str[18];
+    char     bt_mac_str[18];
     ret = rfcomm_net_get_host_bt_addr(&bt_mac);
     if (ret) {
         ERROR_("get host mac fail\n");
@@ -338,14 +344,16 @@ static int rfcomm_server_accept_client(void)
     }
     ba2str(&bt_mac, bt_mac_str);
 
-    client_handle_t* handle = (client_handle_t*)calloc(1, sizeof(client_handle_t));
+    client_handle_t* handle
+        = (client_handle_t*)calloc(1, sizeof(client_handle_t));
     if (handle == NULL) {
         ERROR_("calloc handle fail\n");
         return -1;
     }
 
     for (i = 0; i < SERVER_SUPPORT_CLIENT_NUM; i++) {
-        if (rfcomm_net_list_traversal(&client_list, rfcomm_server_check_by_index, i)) {
+        if (rfcomm_net_list_traversal(&client_list,
+                                      rfcomm_server_check_by_index, i)) {
             handle->index = i;
             break;
         }
@@ -355,7 +363,8 @@ static int rfcomm_server_accept_client(void)
         return -1;
     }
 
-    int client_fd = accept(g_server_service.rfcomm_fd, (struct sockaddr*)&rem_addr, &opt);
+    int client_fd
+        = accept(g_server_service.rfcomm_fd, (struct sockaddr*)&rem_addr, &opt);
     handle->client_fd = client_fd;
     ba2str(&rem_addr.rc_bdaddr, buf);
     INFO_("accept from %s\n", buf);
@@ -374,8 +383,8 @@ static int rfcomm_server_accept_client(void)
         return -1;
     }
 
-    uv_poll_t* client_poll_handle = rfcomm_net_uv_poll_start(g_server_service.loop,
-        client_fd, UV_DISCONNECT | UV_READABLE,
+    uv_poll_t* client_poll_handle = rfcomm_net_uv_poll_start(
+        g_server_service.loop, client_fd, UV_DISCONNECT | UV_READABLE,
         rfcomm_server_poll_client_data, handle);
     if (client_poll_handle == NULL) {
         ERROR_("poll client fail\n");
@@ -383,8 +392,8 @@ static int rfcomm_server_accept_client(void)
     }
     handle->client_poll_handle = client_poll_handle;
 
-    uv_poll_t* tap_poll_handle = rfcomm_net_uv_poll_start(g_server_service.loop,
-        tap_fd, UV_DISCONNECT | UV_READABLE,
+    uv_poll_t* tap_poll_handle = rfcomm_net_uv_poll_start(
+        g_server_service.loop, tap_fd, UV_DISCONNECT | UV_READABLE,
         rfcomm_server_poll_tap_data, handle);
     if (tap_poll_handle == NULL) {
         ERROR_("poll tap fail\n");
@@ -402,7 +411,7 @@ fail:
 
 static void rfcomm_server_close_client(struct list_node* handle)
 {
-    char buf[64] = { 0 };
+    char             buf[64]       = { 0 };
     client_handle_t* client_handle = (client_handle_t*)handle;
     if (client_handle == NULL) {
         return;
@@ -418,7 +427,8 @@ static void rfcomm_server_close_client(struct list_node* handle)
     rfcomm_server_bridge_del_iface(buf, SERVER_BR_IFNAME);
     rfcomm_net_tap_close(buf, client_handle->tap_fd);
 
-    rfcomm_net_list_del_item((struct list_node*)client_handle, rfcomm_server_item_free);
+    rfcomm_net_list_del_item((struct list_node*)client_handle,
+                             rfcomm_server_item_free);
 }
 
 static int rfcomm_server_spp_service_register(void)
@@ -426,16 +436,16 @@ static int rfcomm_server_spp_service_register(void)
     int ret = 0;
 
     uint32_t uuid_int[] = { 0x01110000, 0x00100000, 0x80000080, 0xFB349B5F };
-    uint8_t* uuid_ptr = (uint8_t*)&uuid_int[0];
-    uuid_ptr[2] = (SERVER_BT_UUID >> 8) & 0xFF;
-    uuid_ptr[3] = SERVER_BT_UUID & 0xFF;
+    uint8_t* uuid_ptr   = (uint8_t*)&uuid_int[0];
+    uuid_ptr[2]         = (SERVER_BT_UUID >> 8) & 0xFF;
+    uuid_ptr[3]         = SERVER_BT_UUID & 0xFF;
 
-    uint8_t rfcomm_channel = SERVER_BT_CHANNEL;
-    const char* service_name = "Rfcomm server";
-    const char* service_dsc = "server of net proxy by rfcomm.";
-    const char* service_prov = "YJ";
+    uint8_t     rfcomm_channel = SERVER_BT_CHANNEL;
+    const char* service_name   = "Rfcomm server";
+    const char* service_dsc    = "server of net proxy by rfcomm.";
+    const char* service_prov   = "YJ";
 
-    uuid_t root_uuid, l2cap_uuid, rfcomm_uuid, svc_uuid;
+    uuid_t      root_uuid, l2cap_uuid, rfcomm_uuid, svc_uuid;
     sdp_list_t *l2cap_list = 0, *rfcomm_list = 0, *root_list = 0,
                *proto_list = 0, *access_proto_list = 0;
     sdp_data_t *channel = 0, *psm = 0;
@@ -460,7 +470,7 @@ static int rfcomm_server_spp_service_register(void)
 
     // set rfcomm information
     sdp_uuid16_create(&rfcomm_uuid, RFCOMM_UUID);
-    channel = sdp_data_alloc(SDP_UINT8, &rfcomm_channel);
+    channel     = sdp_data_alloc(SDP_UINT8, &rfcomm_channel);
     rfcomm_list = sdp_list_append(0, &rfcomm_uuid);
     sdp_list_append(rfcomm_list, channel);
     sdp_list_append(proto_list, rfcomm_list);
@@ -474,9 +484,9 @@ static int rfcomm_server_spp_service_register(void)
 
     // set the name, provider, and description
     sdp_set_info_attr(g_sdp_service.rec, service_name, service_prov,
-        service_dsc);
+                      service_dsc);
 
-    int err = 0;
+    int err               = 0;
     g_sdp_service.session = 0;
 
     // connect to the local SDP server, register the service record, and
@@ -515,7 +525,7 @@ static void rfcomm_server_spp_service_unregister(void)
         sdp_record_unregister(g_sdp_service.session, g_sdp_service.rec);
         sdp_close(g_sdp_service.session);
         g_sdp_service.session = NULL;
-        g_sdp_service.rec = NULL;
+        g_sdp_service.rec     = NULL;
     }
 
     /* double free */
@@ -524,12 +534,12 @@ static void rfcomm_server_spp_service_unregister(void)
 
 static int rfcomm_server_create(void)
 {
-    int ret;
+    int                ret;
     struct sockaddr_rc loc_addr = { 0 };
     INFO_("create server\n");
 
     bdaddr_t bt_mac;
-    char bt_mac_str[18];
+    char     bt_mac_str[18];
     ret = rfcomm_net_get_host_bt_addr(&bt_mac);
     if (ret) {
         ERROR_("get host mac fail\n");
@@ -560,17 +570,19 @@ static int rfcomm_server_create(void)
     rfcomm_net_iface_set_mac(SERVER_BR_IFNAME, bt_mac_str);
     rfcomm_net_iface_set_ip(SERVER_BR_IP, SERVER_BR_IFNAME);
 
-    g_server_service.rfcomm_fd = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-    loc_addr.rc_family = AF_BLUETOOTH;
-    loc_addr.rc_bdaddr = *BDADDR_ANY;
+    g_server_service.rfcomm_fd
+        = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+    loc_addr.rc_family  = AF_BLUETOOTH;
+    loc_addr.rc_bdaddr  = *BDADDR_ANY;
     loc_addr.rc_channel = (uint8_t)SERVER_BT_CHANNEL;
-    bind(g_server_service.rfcomm_fd, (struct sockaddr*)&loc_addr, sizeof(loc_addr));
+    bind(g_server_service.rfcomm_fd, (struct sockaddr*)&loc_addr,
+         sizeof(loc_addr));
     listen(g_server_service.rfcomm_fd, SERVER_SUPPORT_CLIENT_NUM);
 
     INFO_("listen...\n");
-    g_server_service.server_poll_handle = rfcomm_net_uv_poll_start(g_server_service.loop,
-        g_server_service.rfcomm_fd, UV_DISCONNECT | UV_READABLE,
-        rfcomm_server_poll_server_data, NULL);
+    g_server_service.server_poll_handle = rfcomm_net_uv_poll_start(
+        g_server_service.loop, g_server_service.rfcomm_fd,
+        UV_DISCONNECT | UV_READABLE, rfcomm_server_poll_server_data, NULL);
 
     return ret;
 

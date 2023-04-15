@@ -10,8 +10,8 @@ struct {
         RFCOMM_IP_FRAME_STATE_END,
     } state;
 
-    int offset;
-    int length;
+    int     offset;
+    int     length;
     uint8_t data[TAP_MAX_PKT_WRITE_LEN];
 } recv_ctrl;
 
@@ -20,9 +20,9 @@ uv_pipe_t stdin_pipe;
 void syslog(int level, const char* fmt, ...)
 {
     if (level >= RECOMM_NET_LOG_LEVEL || level == 4) {
-        char buf[64] = { 0 };
-        struct timeval tv = { 0 };
-        struct tm tm = { 0 };
+        char           buf[64] = { 0 };
+        struct timeval tv      = { 0 };
+        struct tm      tm      = { 0 };
 
         if (level != 4) {
             gettimeofday(&tv, NULL);
@@ -46,10 +46,10 @@ void rfcomm_net_list_init(struct list_node* list)
 
 void rfcomm_net_list_add_item(struct list_node* list, struct list_node* item)
 {
-    item->prev = list->prev;
-    item->next = list;
+    item->prev       = list->prev;
+    item->next       = list;
     list->prev->next = item;
-    list->prev = item;
+    list->prev       = item;
 }
 
 void rfcomm_net_list_del_item(struct list_node* item, del_cb cb)
@@ -113,7 +113,7 @@ static int rfcomm_net_escape(uint8_t* in, int ilen, uint8_t* out, int* olen)
 }
 
 static int rfcomm_net_data_unescape(uint8_t* in, int ilen, uint8_t* out,
-    int olen)
+                                    int olen)
 {
     int i, j;
     if (in == NULL || out == NULL) {
@@ -257,7 +257,7 @@ void rfcomm_net_protocol_receive(int fd, uint8_t* data, int len)
 
 int rfcomm_net_get_host_bt_addr(bdaddr_t* addr)
 {
-    int dev_id;
+    int                 dev_id;
     struct hci_dev_info dev_info;
 
     dev_id = hci_get_route(NULL);
@@ -277,8 +277,8 @@ int rfcomm_net_get_host_bt_addr(bdaddr_t* addr)
 
 int rfcomm_net_iface_set_mac(const char* if_name, const char* mac)
 {
-    int ret;
-    int sock_fd;
+    int          ret;
+    int          sock_fd;
     struct ifreq ifr = { 0 };
     unsigned int mac2bit[6];
 
@@ -290,9 +290,9 @@ int rfcomm_net_iface_set_mac(const char* if_name, const char* mac)
     }
 
     sscanf((char*)mac, "%02X:%02X:%02X:%02X:%02X:%02X",
-        (unsigned int*)&mac2bit[0], (unsigned int*)&mac2bit[1],
-        (unsigned int*)&mac2bit[2], (unsigned int*)&mac2bit[3],
-        (unsigned int*)&mac2bit[4], (unsigned int*)&mac2bit[5]);
+           (unsigned int*)&mac2bit[0], (unsigned int*)&mac2bit[1],
+           (unsigned int*)&mac2bit[2], (unsigned int*)&mac2bit[3],
+           (unsigned int*)&mac2bit[4], (unsigned int*)&mac2bit[5]);
 
     sock_fd = socket(PF_INET, SOCK_DGRAM, 0);
     if (sock_fd < 0) {
@@ -301,7 +301,7 @@ int rfcomm_net_iface_set_mac(const char* if_name, const char* mac)
     }
 
     strncpy(ifr.ifr_name, if_name, IFNAMSIZ - 1);
-    ifr.ifr_ifru.ifru_hwaddr.sa_family = 1;
+    ifr.ifr_ifru.ifru_hwaddr.sa_family  = 1;
     ifr.ifr_ifru.ifru_hwaddr.sa_data[0] = mac2bit[0];
     ifr.ifr_ifru.ifru_hwaddr.sa_data[1] = mac2bit[1];
     ifr.ifr_ifru.ifru_hwaddr.sa_data[2] = mac2bit[2];
@@ -320,8 +320,8 @@ int rfcomm_net_iface_set_mac(const char* if_name, const char* mac)
 
 int rfcomm_net_iface_up(const char* if_name)
 {
-    int socket_fd;
-    struct ifreq ifr = { 0 };
+    int                socket_fd;
+    struct ifreq       ifr = { 0 };
     struct sockaddr_in sin;
 
     if (if_name == NULL) {
@@ -349,8 +349,8 @@ int rfcomm_net_iface_up(const char* if_name)
 
 int rfcomm_net_iface_down(const char* if_name)
 {
-    int socket_fd;
-    struct ifreq ifr = { 0 };
+    int                socket_fd;
+    struct ifreq       ifr = { 0 };
     struct sockaddr_in sin;
 
     if (if_name == NULL) {
@@ -378,9 +378,9 @@ int rfcomm_net_iface_down(const char* if_name)
 
 int rfcomm_net_iface_set_ip(char* ip, char* br_name)
 {
-    struct ifreq ifr;
+    struct ifreq       ifr;
     struct sockaddr_in sin;
-    int sk, err;
+    int                sk, err;
 
     sk = socket(AF_INET, SOCK_DGRAM, 0);
 
@@ -404,7 +404,7 @@ int rfcomm_net_iface_set_ip(char* ip, char* br_name)
 
 int rfcomm_net_iface_get_state(char* net_name)
 {
-    int skfd = 0;
+    int          skfd = 0;
     struct ifreq ifr;
 
     skfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -431,8 +431,8 @@ int rfcomm_net_iface_get_state(char* net_name)
 int rfcomm_net_tap_open(const char* if_name, const char* mac_addr)
 {
     struct ifreq ifr;
-    int tap_fd = 0;
-    int ret;
+    int          tap_fd = 0;
+    int          ret;
 
     tap_fd = open("/dev/net/tun", O_RDWR | O_CLOEXEC);
     if (tap_fd < 0) {
@@ -483,8 +483,8 @@ void rfcomm_net_tap_close(const char* if_name, int tap_fd)
     }
 }
 
-uv_poll_t* rfcomm_net_uv_poll_start(uv_loop_t* loop, int fd, int pevents, uv_poll_cb cb,
-    void* userdata)
+uv_poll_t* rfcomm_net_uv_poll_start(uv_loop_t* loop, int fd, int pevents,
+                                    uv_poll_cb cb, void* userdata)
 {
     uv_poll_t* handle = (uv_poll_t*)malloc(sizeof(uv_poll_t));
     if (!handle) {
@@ -522,12 +522,14 @@ void rfcomm_net_uv_poll_stop(uv_poll_t* handle)
     uv_close((uv_handle_t*)handle, rfcomm_net_uv_close_cb);
 }
 
-static void rfcomm_net_command_alloc(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf)
+static void rfcomm_net_command_alloc(uv_handle_t* handle, size_t suggested_size,
+                                     uv_buf_t* buf)
 {
     *buf = uv_buf_init((char*)malloc(suggested_size), suggested_size);
 }
 
-static void rfcomm_net_command_read_stdin(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf)
+static void rfcomm_net_command_read_stdin(uv_stream_t* stream, ssize_t nread,
+                                          const uv_buf_t* buf)
 {
     RAW_("rfcomm_net> ");
     fflush(stdout);
@@ -537,14 +539,14 @@ static void rfcomm_net_command_read_stdin(uv_stream_t* stream, ssize_t nread, co
             uv_close((uv_handle_t*)&stdin_pipe, NULL);
         }
     } else if (nread > 1) {
-        int cnt = 0;
+        int   cnt     = 0;
         char* saveptr = NULL;
         char* _argv[10];
-        char* tmpstr = buf->base;
+        char* tmpstr      = buf->base;
         tmpstr[nread - 1] = '\0';
         while ((tmpstr = strtok_r(tmpstr, " ", &saveptr)) && cnt < 10) {
             _argv[cnt++] = tmpstr;
-            tmpstr = NULL;
+            tmpstr       = NULL;
         }
 
         if (cnt > 0) {
@@ -568,8 +570,8 @@ int rfcomm_net_command_start(uv_loop_t* loop, cmd_cb cb)
     uv_pipe_init(loop, &stdin_pipe, 0);
     uv_pipe_open(&stdin_pipe, 0);
     stdin_pipe.data = (void*)cb;
-    uv_read_start((uv_stream_t*)&stdin_pipe,
-        rfcomm_net_command_alloc, rfcomm_net_command_read_stdin);
+    uv_read_start((uv_stream_t*)&stdin_pipe, rfcomm_net_command_alloc,
+                  rfcomm_net_command_read_stdin);
     RAW_("rfcomm_net> ");
     fflush(stdout);
     return 0;
