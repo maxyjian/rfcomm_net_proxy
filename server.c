@@ -486,11 +486,6 @@ static int rfcomm_server_spp_service_register(void)
     sdp_set_info_attr(g_sdp_service.rec, service_name, service_prov,
                       service_dsc);
 
-    int err               = 0;
-    g_sdp_service.session = 0;
-
-    // connect to the local SDP server, register the service record, and
-    // disconnect
     g_sdp_service.session
         = sdp_connect(BDADDR_ANY, BDADDR_LOCAL, SDP_RETRY_IF_BUSY);
     if (g_sdp_service.session == NULL) {
@@ -500,7 +495,8 @@ static int rfcomm_server_spp_service_register(void)
         ret = -1;
     }
 
-    err = sdp_record_register(g_sdp_service.session, g_sdp_service.rec, 0);
+    int err = 0;
+    err     = sdp_record_register(g_sdp_service.session, g_sdp_service.rec, 0);
     if (err == -1) {
         sdp_close(g_sdp_service.session);
         g_sdp_service.session = NULL;

@@ -18,13 +18,20 @@ static client_service_t g_client_service = {
     .client_fd = -1,
 };
 
-static int  rfcomm_client_connect(void);
+static int  rfcomm_client_connect(const char* remote_mac);
 static int  rfcomm_client_close(void);
 static void rfcomm_client_cmd_usage(void);
 
 static int rfcomm_client_cmd_connect(int argc, char** argv)
 {
-    int ret = rfcomm_client_connect();
+    int ret;
+
+    if (argc == 2) {
+        ret = rfcomm_client_connect(argv[1]);
+    } else {
+        ret = rfcomm_client_connect(CLIENT_DEST_MAC);
+    }
+
     if (ret) {
         ERROR_("connect fail\n");
     }
@@ -127,7 +134,7 @@ static void rfcomm_client_poll_client_data(uv_poll_t* handle, int status,
     }
 }
 
-static int rfcomm_client_connect(void)
+static int rfcomm_client_connect(const char* remote_mac)
 {
     bdaddr_t bt_mac;
     char     bt_mac_str[18];
@@ -138,7 +145,7 @@ static int rfcomm_client_connect(void)
     }
     ba2str(&bt_mac, bt_mac_str);
 
-    INFO_("client connect\n");
+    INFO_("client connect:%s\n", remote_mac);
     g_client_service.client_fd
         = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
     if (g_client_service.client_fd < 0) {
@@ -149,7 +156,7 @@ static int rfcomm_client_connect(void)
     struct sockaddr_rc addr = { 0 };
     addr.rc_family          = AF_BLUETOOTH;
     addr.rc_channel         = (uint8_t)CLIENT_BT_CHANNEL;
-    str2ba(CLIENT_DEST_MAC, &addr.rc_bdaddr);
+    str2ba(remote_mac, &addr.rc_bdaddr);
 
     int status = connect(g_client_service.client_fd, (struct sockaddr*)&addr,
                          sizeof(addr));
